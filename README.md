@@ -2,7 +2,7 @@
 
 MATLAB research scripts by Do-Gyeong Yuk for two fault-diagnosis studies.
 The first classifies normal versus abnormal vehicle-engine condition from the FordA / FordB sensor data by converting each 500-value sample into a grayscale or RGB image and applying CNNs, transfer learning with pretrained networks, and autoencoders.
-The second converts vibration recordings of a public electric-motor fault dataset into STFT spectrogram images that are used as CNN input.
+The second converts vibration recordings of a public electric-motor fault dataset into STFT spectrogram images and classifies them by fault type with pretrained networks (transfer learning).
 
 ## Publications
 
@@ -22,6 +22,36 @@ The second converts vibration recordings of a public electric-motor fault datase
   <img src="docs/autoencoder_mse.png" alt="Autoencoder reconstruction error" width="680" />
   <br>
   <sub>Autoencoder reconstruction error (MSE) at five hidden-layer sizes (5, 10, 15, 20, 25 nodes) for grayscale (left) and RGB (right) images, from the PHMAP 2021 slides. Bars follow the order of the slide table: normal training data, normal and abnormal test data, normal and abnormal noisy test data, and the same noisy test data after denoising.</sub>
+</p>
+
+<p align="center">
+  <img src="docs/motor_time_frequency.png" alt="Raw signal, FFT, STFT and wavelet images of motor vibration samples" width="760" />
+  <br>
+  <sub>Raw signal, FFT spectrum, STFT image and wavelet-transform (WT) image of one normal and one fault vibration sample of the motor dataset (from the November 2022 KSME slides).</sub>
+</p>
+
+<p align="center">
+  <img src="docs/motor_features.png" alt="Time-domain and frequency-domain features" width="760" />
+  <br>
+  <sub>Time-domain and frequency-domain features extracted from each motor vibration sample for the feature-based classifiers (diagram from the KSME 2022 poster and the KSNVE 2022 slides).</sub>
+</p>
+
+<p align="center">
+  <img src="docs/motor_feature_vectors.png" alt="Feature vectors and class counts" width="680" />
+  <br>
+  <sub>Feature vectors and class counts of the two motor classification settings, by condition only and by rated power and condition (from the November 2022 KSME slides).</sub>
+</p>
+
+<p align="center">
+  <img src="docs/motor_nca_weights.png" alt="NCA feature weights" width="420" />
+  <br>
+  <sub>Feature weights from neighborhood component analysis (NCA) plotted over the feature index, with the features selected in the slides circled in red (from the November 2022 KSME slides).</sub>
+</p>
+
+<p align="center">
+  <img src="docs/motor_classifier_layers.png" alt="Layer sequences of the LSTM and CNN classifiers" width="760" />
+  <br>
+  <sub>Layer sequences of the LSTM classifier (left) and of the CNN image classifier (right) as drawn in the KSNVE 2022 and November 2022 KSME slides.</sub>
 </p>
 
 ## Repository structure
@@ -48,6 +78,9 @@ The second converts vibration recordings of a public electric-motor fault datase
 | `engine_fordB/autoencoder/Untitled3.m` | Grayscale image conversion of FordB and autoencoder hidden-size sweep. |
 | `engine_fordB/autoencoder/rgb_code.m` | RGB image conversion of FordB and autoencoder hidden-size sweep. |
 | `motor_stft/stft_data_maker.m` | Generates STFT spectrogram PNG files per fault class from motor vibration CSV files. |
+| `motor_stft/training_filepath.xlsx` | Table of rated power, machine ID, fault label and dataset folder for the training split, in the column layout that `stft_data_maker.m` indexes. |
+| `motor_stft/validation_filepath.xlsx` | Same table for the validation split. |
+| `motor_transfer_learning/transferlearning_code_motor.m` | Transfer learning with AlexNet and ShuffleNet on the STFT image folders, by fault class and by rated power and fault class, each followed by a test on a separate image folder. |
 | `archive/CNN.m` | Earlier CNN for 28×28×1 images (April 2021). |
 | `archive/CNN_revised.m` | Later CNN variant with 5×5 convolutions (November 2021). |
 | `archive/savefigure.m` | Earlier image-saving script, including PCA-score images and a stacked autoencoder with a softmax layer. |
@@ -105,10 +138,12 @@ Autoencoders (`trainAutoencoder`); the configurations below are trained on norma
 
 ### Motor data
 
+STFT image generation:
+
 - `motor_stft/stft_data_maker.m` expects string arrays `filepath_list` and `filepath_list_validation` in the workspace, with the fault label in column 3 and a folder of CSV files in column 5.
+- `motor_stft/training_filepath.xlsx` and `motor_stft/validation_filepath.xlsx` hold tables of this layout, with the columns Watt, name, type, file_name and file_path and one row per machine and fault label.
 - Each CSV file is read with `tabularTextDatastore`, and the signal column is passed to `stft`.
 - The spectrogram figure is saved without axes or colorbar as a PNG file with `export_fig` into one folder per split and class.
-- `engine_fordA/CNN_date_21_4_5.m` contains a test section that points to such an STFT image set and defines the class names Normal and E1–E4.
 
 | STFT setting in `stft_data_maker.m` | Value |
 |---|---|
@@ -126,6 +161,66 @@ Autoencoders (`trainAutoencoder`); the configurations below are trained on norma
 | 베어링불량 | `E3` | bearing fault |
 | 벨트느슨함 | `E4` | belt looseness |
 
+Classes by rated power (`perWatt`):
+
+- A second class definition combines a rated-power group with the condition, which gives the class names `W1-Normal` to `W12-E4` listed in the test sections of `engine_fordA/CNN_date_21_4_5.m` and `engine_fordA/CNN_date_22_6_27.m`.
+- The same test sections also define the five class names Normal and E1–E4, and the one in `CNN_date_21_4_5.m` points to a `perWatt` STFT image folder.
+- The table below pairs the groups with the rated powers in the order of the two spreadsheets; the conditions per group in the spreadsheets and in the class-name list coincide.
+
+| Group | Rated power | Conditions |
+|---|---|---|
+| W1 | 2.2 kW | Normal, E1, E2, E3, E4 |
+| W2 | 3.7 kW | Normal, E1, E2, E3 |
+| W3 | 3.75 kW | Normal, E1 |
+| W4 | 5.5 kW | Normal, E1, E2, E3, E4 |
+| W5 | 7.5 kW | Normal, E1, E3, E4 |
+| W6 | 11 kW | Normal, E1, E2, E3, E4 |
+| W7 | 15 kW | Normal, E2, E3, E4 |
+| W8 | 18.5 kW | Normal, E3, E4 |
+| W9 | 22 kW | Normal, E1, E2, E4 |
+| W10 | 30 kW | Normal, E1 |
+| W11 | 37 kW | Normal, E1 |
+| W12 | 55 kW | Normal, E2, E4 |
+
+Transfer learning (`motor_transfer_learning/transferlearning_code_motor.m`):
+
+- Each of the four sections loads a pretrained network, replaces its last fully connected layer and its classification layer, and trains on an image folder that is split 80 % / 20 % into training and validation.
+- Each section then classifies a separate test image folder and saves the trained network together with the test accuracy.
+- The image folders `stft data set/training` and `stft data set/validation` are the ones that `stft_data_maker.m` writes to.
+- An `imageDataAugmenter` is defined in every section but is not passed to the datastores, so the images are only resized to the network input size.
+- In the saved state the first section loads ShuffleNet while its title and the replaced layer names (`fc8`, `output`) belong to AlexNet, and its image folders belong to a different image set that is not part of this repository.
+
+| Section | Network loaded | Training / test image folders | Epochs | Validation frequency |
+|---|---|---|---|---|
+| `alexnet_stft` | `shufflenet` | `Case1` / `Test` of a different image set | 30 | 1 |
+| `alexnet_stft_perWatt` | `alexnet` | `stft data set/perWatt/training` / `stft data set/perWatt/validation` | 15 | 3 |
+| `shufflenet_stft` | `shufflenet` | `stft data set/training` / `stft data set/validation` | 15 | 3 |
+| `shufflenet_stft_perWatt` | `shufflenet` | `stft data set/perWatt/training` / `stft data set/perWatt/validation` | 15 | 3 |
+
+| Training option in all sections | Value |
+|---|---|
+| Solver | `sgdm` |
+| Mini-batch size | 128 |
+| Initial learning rate | 0.0001 |
+| Shuffle | every epoch |
+| Learn-rate factor of the new fully connected layer | 10 |
+
+Classifiers described only in the presentation material:
+
+- The conference slides and posters also describe a two-layer feed-forward network and an LSTM network trained on feature vectors, each with and without feature selection by neighborhood component analysis (NCA), a CNN trained on STFT and wavelet-transform images, and transfer learning with five pretrained networks.
+- Of these, this repository contains the STFT image generation and the transfer-learning script for AlexNet and ShuffleNet.
+- The scripts for the feature extraction, the NCA, the feed-forward network, the LSTM network, the wavelet-transform images and the CNN were not found.
+- The values in the table below are quoted from the slides and cannot be checked against code in this repository.
+
+| Item in the slides | Value |
+|---|---|
+| Feature vector for classification by condition | 1×18, rated power followed by the features |
+| Feature vector for classification by rated power and condition | 1×17 |
+| Features marked as selected by NCA (feature index) | Abs Mean (3), Frequency 1x (11), Frequency 2x (12), Frequency 4x (14), Belt 1x (15), Belt 2x (16), Belt 3x (17) |
+| Feed-forward network | 100 hidden neurons, scaled conjugate gradient backpropagation |
+| CNN | optimizer adam, learning rate 0.0001, input image size 224 |
+| Pretrained networks | AlexNet, SqueezeNet, ShuffleNet, GoogLeNet, ResNet-18 |
+
 ## Requirements
 
 - All code is MATLAB script code.
@@ -134,7 +229,7 @@ Autoencoders (`trainAutoencoder`); the configurations below are trained on norma
 
 | Toolbox | Functions used in the scripts |
 |---|---|
-| Deep Learning Toolbox | `trainNetwork`, `trainingOptions`, layer functions, `classify`, `activations`, `augmentedImageDatastore`, `trainAutoencoder`, `trainSoftmaxLayer`, `stack`, `plotconfusion` |
+| Deep Learning Toolbox | `trainNetwork`, `trainingOptions`, layer functions, `layerGraph`, `replaceLayer`, `classify`, `activations`, `augmentedImageDatastore`, `trainAutoencoder`, `trainSoftmaxLayer`, `stack`, `plotconfusion` |
 | Pretrained network support packages | `alexnet`, `resnet18`, `googlenet`, `squeezenet`, `shufflenet` |
 | Image Processing Toolbox | `mat2gray`, `imclearborder`, `immse` |
 | Statistics and Machine Learning Toolbox | `pca`, `fscnca`, `fscchi2`, `fscmrmr`, `cvpartition` |
@@ -155,6 +250,10 @@ Third-party MATLAB code that the scripts call and that is not included here:
 - `resizing_code.m` works inside the per-size folders, where it writes resized `data_<n>.png` files and deletes the `file_*.png` files it read.
 - `autoencoder_code.m` needs the image cell arrays created by `savefigure_and_matrix_generate_code.m` in the workspace.
 - `new_image_maker.m` needs the cell arrays created by `image_maker.m` in the workspace.
+- `stft_data_maker.m` needs `filepath_list` and `filepath_list_validation` in the workspace; importing the two spreadsheets in `motor_stft/` as string arrays is not part of the script.
+- `transferlearning_code_motor.m` reads the image folders written by `stft_data_maker.m` and `perWatt` image folders whose generation is not part of the saved scripts.
+- Its sections are independent of each other, and each one changes into a results folder before saving a MAT-file with the trained network.
+- Its first section passes an output function `stopIfAccuracyNotImproving` to `trainingOptions`; this function is not defined in the script and is not included.
 
 ## Data
 
@@ -163,11 +262,14 @@ Third-party MATLAB code that the scripts call and that is not included here:
 - The dataset description states that FordA was collected in typical operating conditions and that the FordB test data were collected under noisy conditions.
 - The motor recordings are a third-party dataset that is not redistributed here.
 - The folder name in the script, 기계시설물고장예지센서 (machine-facility fault-prediction sensor), matches the title of a public dataset distributed through AI Hub (aihub.or.kr).
+- The two spreadsheets in `motor_stft/` contain only rated powers, machine IDs, fault labels and folder paths of that dataset, not recordings.
 - The motor dataset is organised as split / sensor type (`current`, `vibration`) / rated power / machine ID / fault label / CSV file.
 - Each CSV file starts with 9 header lines (date, file name, label, label number, motor specification, period, sample rate, RMS, data length) followed by rows of time and signal values.
 
 ## Notes
 
+- `motor_transfer_learning/transferlearning_code_motor.m` was renamed and a folder name in two of its paths was replaced by `dataset`, because both carried a person's name; no other code was changed.
 - This is research code kept as it was used; file dates range from 2021 to 2022.
+- The motor scripts and spreadsheets date from May 2022, and the motor figures are taken from presentation material of 2022.
 - Several scripts keep leftover lines from interactive use, such as alternative assignments and paths of other experiments, and are not guaranteed to run from top to bottom.
 - `engine_fordB/wavelet_code.m` starts from MATLAB-generated code, and `engine_fordA/CAM Function/Untitled2.m` from a MathWorks documentation example.
