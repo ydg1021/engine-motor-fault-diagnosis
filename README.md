@@ -10,6 +10,20 @@ The second converts vibration recordings of a public electric-motor fault datase
 - D.-G. Yuk, D. Ryu, J. W. Sohn, "Classification of Normal/Abnormal Conditions for Vehicle Engine," PHMAP 2021 (Best Student Award, Silver Medal).
 - Conference presentations on electric-motor fault detection: KSME / KSNVE 2022, PHM Korea 2023, PHM Korea 2025.
 
+## Figures
+
+<p align="center">
+  <img src="docs/signal_to_image.png" alt="Signal-to-image conversion" width="560" />
+  <br>
+  <sub>Signal-to-image conversion for the engine data: each 500-value sample becomes a 1 x 500 grayscale or RGB image, which is resized for the CNNs (images from the PHMAP 2021 slides).</sub>
+</p>
+
+<p align="center">
+  <img src="docs/autoencoder_mse.png" alt="Autoencoder reconstruction error" width="680" />
+  <br>
+  <sub>Autoencoder reconstruction error (MSE) at five hidden-layer sizes (5, 10, 15, 20, 25 nodes) for grayscale (left) and RGB (right) images, from the PHMAP 2021 slides. Bars follow the order of the slide table: normal training data, normal and abnormal test data, normal and abnormal noisy test data, and the same noisy test data after denoising.</sub>
+</p>
+
 ## Repository structure
 
 | Path | Purpose |
@@ -38,6 +52,7 @@ The second converts vibration recordings of a public electric-motor fault datase
 | `archive/CNN_revised.m` | Later CNN variant with 5×5 convolutions (November 2021). |
 | `archive/savefigure.m` | Earlier image-saving script, including PCA-score images and a stacked autoencoder with a softmax layer. |
 | `archive/save_figure_code.m` | Earlier version of the PNG export, with a commented-out STFT image export. |
+| `docs/` | Figures shown in this README. |
 
 ## How it works
 
